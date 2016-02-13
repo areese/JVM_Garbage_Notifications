@@ -17,28 +17,38 @@ public class PSOldGenMonitorLoopRunnable implements Runnable {
     private final MemoryPoolMXBean PSOldGen;
     private Landfill landfill;
 
-    public PSOldGenMonitorLoopRunnable(MemoryPoolMXBean PSOldGen, Landfill landfill) {
+    public PSOldGenMonitorLoopRunnable(MemoryPoolMXBean PSOldGen, Landfill landfill, boolean clear) {
         this.PSOldGen = PSOldGen;
-        this.landfill = landfill;
+        this.landfill = (clear) ? landfill : null;
     }
 
 
     @Override
     public void run() {
         while (true) {
+
             if (null != PSOldGen && PSOldGen.isCollectionUsageThresholdExceeded()) {
-                Utils.dumpOldGen("========isCollectionUsageThresholdExceeded  usage:\n", PSOldGen);
-                landfill.clear();
-                // gc();
-                PSOldGen.resetPeakUsage();
+                if (!Utils.cleaned()) {
+                    Utils.hit();
+                    Utils.dumpOldGen("========isCollectionUsageThresholdExceeded  usage:\n", PSOldGen);
+                    if (null != landfill) {
+                        landfill.clear();
+                        // gc();
+                        PSOldGen.resetPeakUsage();
+                    }
+                }
                 throttle();
             }
 
             if (PSOldGen.isUsageThresholdExceeded()) {
-                Utils.dumpOldGen("========isUsageThresholdExceeded  usage:\n", PSOldGen);
-                landfill.clear();
-                Utils.gc();
-                PSOldGen.resetPeakUsage();
+                if (!Utils.cleaned()) {
+                    Utils.hit();
+                    Utils.dumpOldGen("========isUsageThresholdExceeded  usage:\n", PSOldGen);
+                    if (null != landfill) {
+                        landfill.clear();
+                        PSOldGen.resetPeakUsage();
+                    }
+                }
                 throttle();
                 try {
                     Thread.sleep(5);

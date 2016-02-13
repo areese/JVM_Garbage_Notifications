@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import com.yahoo.garbage.CleaningRunnable;
 import com.yahoo.garbage.GarbageRunnable;
 import com.yahoo.garbage.Landfill;
 import com.yahoo.garbage.PSOldGenMonitorLoopRunnable;
@@ -31,7 +32,6 @@ public class MakeGarbage {
     static Random r = new Random();
 
     public static void main(String[] args) throws InterruptedException {
-        output("ABC");
         List<MemoryPoolMXBean> memoryPoolMXBeans = ManagementFactory.getMemoryPoolMXBeans();
 
         List<MemoryPoolMXBean> collections = new ArrayList<MemoryPoolMXBean>();
@@ -79,18 +79,38 @@ public class MakeGarbage {
         }
         dumpOldGen("========start  usage:\n", PSOldGen);
 
-        Landfill landfill = new Landfill();
+        int kbToGenerate = 1;
+        int sleepBeforeGC = 0;
+
+        switch (args.length) {
+            case 2:
+                sleepBeforeGC = Integer.valueOf(args[1]);
+
+            case 1:
+                kbToGenerate = Integer.valueOf(args[0]);
+        }
+
+        Landfill landfill = new Landfill(sleepBeforeGC);
         boolean useNotifications = true;
+
+        // if you enable this thread, we generate just enought o cause the gc to run a bunch
+        // it's useful.
+        boolean enableSpinningThread = true;
+
+        NotificationService ns;
 
         if (useNotifications) {
             List<GarbageCollectionEventNotification> listeners = new ArrayList<GarbageCollectionEventNotification>();
-            NotificationService ns = new NotificationService(listeners, landfill);
-        } else {
-            new Thread(new PSOldGenMonitorLoopRunnable(PSOldGen, landfill)).start();
+            ns = new NotificationService(listeners, landfill);
+            new Thread(landfill.getCleaner()).start();
+        }
+
+        if (enableSpinningThread) {
+            new Thread(new PSOldGenMonitorLoopRunnable(PSOldGen, landfill, false)).start();
         }
 
 
-        new Thread(new GarbageRunnable(Utils.KBToBytes(1), landfill)).start();
+        new Thread(new GarbageRunnable(kbToGenerate, landfill)).start();
 
     }
 

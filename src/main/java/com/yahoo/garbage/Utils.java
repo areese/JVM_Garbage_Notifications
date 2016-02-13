@@ -49,12 +49,18 @@ public class Utils {
      * work that ends up working nicely.
      */
     public static void throttle() {
-        for (int k = 0; k < 100; k++) {
-            double a = Utils.r.nextDouble();
-            double db = Math.sqrt(a);
-            double c = db * a;
-            Math.hypot(a, c);
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
+        // for (int k = 0; k < 100; k++) {
+        // double a = Utils.r.nextDouble();
+        // double db = Math.sqrt(a);
+        // double c = db * a;
+        // Math.hypot(a, c);
+        // }
 
     }
 
@@ -68,6 +74,7 @@ public class Utils {
      * Force a gc. Some people recommend calling it 3 times, but with 8u60 once seems to work.
      */
     public static void gc() {
+        cleaned = false;
         for (int i = 0; i < 1; i++) {
             System.gc();
         }
@@ -82,7 +89,7 @@ public class Utils {
      */
     public static void output(String value) {
         // 2016-02-02T20:32:45.523+0800:
-        System.err.println(fmt.format(new Date()) + " " + value);
+        System.err.println(fmt.format(new Date()) + " " + Thread.currentThread().getId() + " " + value);
     }
 
 
@@ -92,6 +99,21 @@ public class Utils {
 
     public static long KBToBytes(int amount) {
         return amount * 1024;
+    }
+
+
+    static volatile boolean cleaned;
+
+    public static void resetCleaned() {
+        cleaned = false;
+    }
+
+    public static boolean cleaned() {
+        return cleaned;
+    }
+
+    public static void hit() {
+        cleaned = true;
     }
 
 }

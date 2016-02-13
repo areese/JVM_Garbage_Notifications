@@ -22,7 +22,7 @@ public class GarbageCollectionEventNotification implements NotificationListener 
         if (null != handback && handback instanceof Landfill) {
             // if we have a handback call it's clear.
             // Really should be an interface so you can do more complext things.
-            ((Landfill) handback).clear();
+            ((Landfill) handback).clearNotification();
         }
     }
 }
