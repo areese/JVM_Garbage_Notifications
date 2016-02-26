@@ -32,12 +32,12 @@ public class PSOldGenMonitorLoopRunnable implements Runnable {
                     Utils.hit();
                     Utils.dumpOldGen("========isCollectionUsageThresholdExceeded  usage:\n", PSOldGen);
                     if (null != landfill) {
-                        landfill.clear();
-                        // gc();
-                        PSOldGen.resetPeakUsage();
+                        // landfill.clear();
+                        // // gc();
+                        // PSOldGen.resetPeakUsage();
                     }
                 }
-                throttle();
+                // throttle();
             }
 
             if (PSOldGen.isUsageThresholdExceeded()) {
@@ -50,11 +50,6 @@ public class PSOldGenMonitorLoopRunnable implements Runnable {
                     }
                 }
                 throttle();
-                try {
-                    Thread.sleep(5);
-                } catch (InterruptedException e) {
-                    break;
-                }
             }
         }
     }

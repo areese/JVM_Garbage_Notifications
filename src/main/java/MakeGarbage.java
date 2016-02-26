@@ -3,7 +3,6 @@
 
 import static com.yahoo.garbage.Utils.BytesToMB;
 import static com.yahoo.garbage.Utils.dumpOldGen;
-import static com.yahoo.garbage.Utils.output;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -15,13 +14,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import com.yahoo.garbage.CleaningRunnable;
 import com.yahoo.garbage.GarbageRunnable;
 import com.yahoo.garbage.Landfill;
 import com.yahoo.garbage.PSOldGenMonitorLoopRunnable;
 import com.yahoo.garbage.Utils;
-import com.yahoo.garbage.jmx.NotificationService;
 import com.yahoo.garbage.jmx.GarbageCollectionEventNotification;
+import com.yahoo.garbage.jmx.NotificationService;
 
 
 /**
@@ -34,10 +32,7 @@ public class MakeGarbage {
     public static void main(String[] args) throws InterruptedException {
         List<MemoryPoolMXBean> memoryPoolMXBeans = ManagementFactory.getMemoryPoolMXBeans();
 
-        List<MemoryPoolMXBean> collections = new ArrayList<MemoryPoolMXBean>();
-        List<MemoryPoolMXBean> usages = new ArrayList<MemoryPoolMXBean>();
-
-        MemoryPoolMXBean PSOldGen = null;
+        MemoryPoolMXBean PSOldGenMbean = null;
 
         for (MemoryPoolMXBean mb : memoryPoolMXBeans) {
             if (MemoryType.HEAP == mb.getType()) {
@@ -45,9 +40,10 @@ public class MakeGarbage {
                 if (!"PS Old Gen".equals(mb.getName())) {
                     System.err.println(mb.getName() + "\n" + usage + "\n=============");
                 }
+
                 if (mb.isUsageThresholdSupported()) {
                     if ("PS Old Gen".equals(mb.getName())) {
-                        PSOldGen = mb;
+                        PSOldGenMbean = mb;
                     }
                     try {
 
@@ -57,27 +53,27 @@ public class MakeGarbage {
                          * 
                          * isUsageThresholdExceeded gets set when I hit 73Mb.
                          */
-                        long threshold = Math.round(usage.getMax() * 0.10);
 
-                        mb.setCollectionUsageThreshold(threshold);
-                        collections.add(mb);
+                        // collection threshold triggers a notification after a collection.
+                        // we want this really really low, so we can get post collection notifications
+                        long collectionThreshold = 1;//Utils.findThreshold(usage, 0.10d);
+
+                        // usage threshold triggers a notification before a collection so we can cause one.
+                        long usageThreshold = Utils.findThreshold(usage, 0.10d);
+
+                        mb.setCollectionUsageThreshold(collectionThreshold);
+                        mb.setUsageThreshold(usageThreshold);
 
                         System.err.println("Set collection threshold for " + mb.getName() + " to "
-                                        + BytesToMB(threshold) + " of " + BytesToMB(usage.getMax()) + "MB");
-                    } catch (UnsupportedOperationException u) {
-                    }
-                    try {
-                        long threshold = Math.round(usage.getMax() * 0.10);
-                        mb.setUsageThreshold(threshold);
-                        System.err.println("Set usage threshold for " + mb.getName() + " to " + BytesToMB(threshold)
-                                        + " of " + BytesToMB(usage.getMax()) + "MB");
-                        usages.add(mb);
+                                        + BytesToMB(collectionThreshold) + " of " + BytesToMB(usage.getMax()) + "MB");
+                        System.err.println("Set usage threshold for " + mb.getName() + " to "
+                                        + BytesToMB(usageThreshold) + " of " + BytesToMB(usage.getMax()) + "MB");
                     } catch (UnsupportedOperationException u) {
                     }
                 }
             }
         }
-        dumpOldGen("========start  usage:\n", PSOldGen);
+        dumpOldGen("========start  usage:\n", PSOldGenMbean);
 
         int kbToGenerate = 1;
         int sleepBeforeGC = 0;
@@ -93,20 +89,18 @@ public class MakeGarbage {
         Landfill landfill = new Landfill(sleepBeforeGC);
         boolean useNotifications = true;
 
-        // if you enable this thread, we generate just enought o cause the gc to run a bunch
-        // it's useful.
-        boolean enableSpinningThread = true;
-
-        NotificationService ns;
-
         if (useNotifications) {
             List<GarbageCollectionEventNotification> listeners = new ArrayList<GarbageCollectionEventNotification>();
-            ns = new NotificationService(listeners, landfill);
+            new NotificationService(listeners, landfill);
             new Thread(landfill.getCleaner()).start();
         }
 
+        // if you enable this thread, we generate just enough to cause the gc to run a bunch
+        // it's useful.
+        boolean enableSpinningThread = true;
+
         if (enableSpinningThread) {
-            new Thread(new PSOldGenMonitorLoopRunnable(PSOldGen, landfill, false)).start();
+            new Thread(new PSOldGenMonitorLoopRunnable(PSOldGenMbean, landfill, false)).start();
         }
 
 

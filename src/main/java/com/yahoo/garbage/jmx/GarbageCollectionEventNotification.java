@@ -16,13 +16,24 @@ import com.yahoo.garbage.Utils;
  *
  */
 public class GarbageCollectionEventNotification implements NotificationListener {
+
+    static final String COLLECTION_TYPE_STRING = "java.management.memory.collection.threshold.exceeded";
+    static final int COLLECTION_TYPE_HC = COLLECTION_TYPE_STRING.hashCode();
+    static final String USAGE_TYPE_STRING = "java.management.memory.threshold.exceeded";
+    static final int USAGE_TYPE_HC = USAGE_TYPE_STRING.hashCode();
+
     public void handleNotification(Notification notification, Object handback) {
         // we should check the event as well. it could be one of 2 types.
-        Utils.output("Received service notification: " + notification);
+        Utils.output("Received service notification: " + notification + " of class " + notification.getClass());
         if (null != handback && handback instanceof Landfill) {
-            // if we have a handback call it's clear.
-            // Really should be an interface so you can do more complext things.
-            ((Landfill) handback).clearNotification();
+            // see what kind of notification it is.
+            String type = notification.getType();
+            // FIXME: add an enum and let landfill decide what to do.
+            if (USAGE_TYPE_HC == type.hashCode()) {
+                // if we have a handback call it's clear.
+                // Really should be an interface so you can do more complex things.
+                ((Landfill) handback).clearNotification();
+            }
         }
     }
 }

@@ -3,6 +3,7 @@
 package com.yahoo.garbage;
 
 import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.util.Date;
 import java.util.Random;
 
@@ -15,6 +16,8 @@ import java.util.Random;
 public class Utils {
     public static final Random r = new Random();
     public static final ThreadSafeSimpleDateFormat fmt = new ThreadSafeSimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    static volatile boolean cleaned;
+
 
     public static byte[] randomBytes(long len) {
         byte[] ret = new byte[(int) len];
@@ -102,8 +105,6 @@ public class Utils {
     }
 
 
-    static volatile boolean cleaned;
-
     public static void resetCleaned() {
         cleaned = false;
     }
@@ -116,4 +117,7 @@ public class Utils {
         cleaned = true;
     }
 
+    public static long findThreshold(MemoryUsage usage, double percentOfMax) {
+        return Math.round(usage.getMax() * percentOfMax);
+    }
 }
